@@ -70,6 +70,9 @@ class User(db.Model):
     role = db.Column(db.String(20), default='student')  # admin, faculty, student
     roll_no = db.Column(db.String(50))
     department = db.Column(db.String(100), default='Computer Science')
+    year = db.Column(db.String(50)) # Added missing field
+    mobile = db.Column(db.String(20)) # Added missing field
+    age = db.Column(db.String(10)) # Added missing field
     photo = db.Column(db.String(100), default='default_avatar.png')
     approved = db.Column(db.Boolean, default=False)
     status = db.Column(db.String(20), default='pending')
