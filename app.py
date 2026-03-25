@@ -59,25 +59,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# ── Auto-Initialize Database (Crucial for Vercel/Cloud) ──────────────────────
-# This ensures tables are created automatically before the first request.
-def init_db():
-    with app.app_context():
-        try:
-            db.create_all()
-            print(f"[OK] Database initialized at {mysql_uri}")
-            
-            # Check for initial settings
-            if Setting.query.filter_by(site_id='main_config').first() is None:
-                new_setting = Setting(site_id='main_config', data_json=json.dumps(DEFAULT_SETTINGS))
-                db.session.add(new_setting)
-                db.session.commit()
-                print("[OK] Settings Initialized.")
-        except Exception as e:
-            print(f"[WARNING] Database initialization issue: {e}")
-
-# Run initialization once at startup
-init_db()
 
 # ── SQL Database Models ───────────────────────────────────────────────────────
 
@@ -177,21 +158,68 @@ class Setting(db.Model):
     def get_data(self):
         return json.loads(self.data_json or '{}')
 
+# ── Auto-Initialize Database (Crucial for Vercel/Cloud) ──────────────────────
+# This ensures tables are created automatically before the first request.
+def init_db():
+    with app.app_context():
+        try:
+            db.create_all()
+            print(f"[OK] Database initialized at {mysql_uri}")
+            
+            # Check for initial settings
+            if Setting.query.filter_by(site_id='main_config').first() is None:
+                new_setting = Setting(site_id='main_config', data_json=json.dumps(DEFAULT_SETTINGS))
+                db.session.add(new_setting)
+                db.session.commit()
+                print("[OK] Settings Initialized.")
+        except Exception as e:
+            print(f"[WARNING] Database initialization issue: {e}")
+
+# Run initialization once at startup
+init_db()
+
 # ── Compatibility Helper ────────────────────────────────────────────────────
 # We create a 'Collection-like' object to minimize logic refactor.
+class SQLCursor:
+    def __init__(self, query_obj):
+        self.query_obj = query_obj
+    def sort(self, key, direction=-1):
+        # Map Mongo-style sort to SQLAlchemy
+        from sqlalchemy import desc, asc
+        attr = getattr(self.query_obj.column_descriptions[0]['entity'], key, None)
+        if attr:
+            if direction == -1:
+                self.query_obj = self.query_obj.order_by(desc(attr))
+            else:
+                self.query_obj = self.query_obj.order_by(asc(attr))
+        return self
+    def limit(self, n):
+        self.query_obj = self.query_obj.limit(n)
+        return self
+    def __iter__(self):
+        for obj in self.query_obj.all():
+            yield obj.to_dict()
+    def __len__(self):
+        return self.query_obj.count()
+    def __getitem__(self, index):
+        # Handle slicing like [:10]
+        if isinstance(index, slice):
+            return [obj.to_dict() for obj in self.query_obj.offset(index.start or 0).limit(index.stop - (index.start or 0)).all()]
+        return self.query_obj.all()[index].to_dict()
+
 class SQLCollection:
     def __init__(self, model):
         self.model = model
     def find_one(self, query):
+        if not query: return None
         if '_id' in query:
             return self.model.query.get(query['_id']).to_dict() if self.model.query.get(query['_id']) else None
-        # Basic filtering for common queries (email, status)
         res = self.model.query.filter_by(**query).first()
         return res.to_dict() if res else None
     def find(self, query=None):
         if query:
-            return [obj.to_dict() for obj in self.model.query.filter_by(**query).all()]
-        return [obj.to_dict() for obj in self.model.query.all()]
+            return SQLCursor(self.model.query.filter_by(**query))
+        return SQLCursor(self.model.query)
     def insert_one(self, doc):
         doc.pop('_id', None) # SQLAlchemy handles ID
         obj = self.model(**doc)
