@@ -56,13 +56,20 @@ BUILTIN_ADMIN = {
 }
 
 # MongoDB Connection
+# Priority: 1. Environment Variable (Vercel/Atlas) -> 2. Localhost -> 3. JSON Fallback
+mongodb_uri = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/')
+
+client = None
+db = None
 try:
-    client = MongoClient('mongodb://localhost:27017/', serverSelectionTimeoutMS=3000)
+    client = MongoClient(mongodb_uri, serverSelectionTimeoutMS=3000)
+    # Check if connection is alive
     client.server_info()
     db = client['department_db']
-    print("[OK] MongoDB connected.")
+    print(f"[OK] Connected to MongoDB via {mongodb_uri}")
 except Exception as e:
-    print(f"[WARNING] MongoDB not available: {e}. Using in-memory fallback.")
+    print(f"[WARNING] MongoDB connection failed: {e}. Falling back to JSON/Mock mode.")
+    client = None
     db = None
 
 import json
