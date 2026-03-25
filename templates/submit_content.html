@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="text-center mb-4">
+                <h2 class="fw-bold text-primary-custom"><i class="fas fa-paper-plane me-2"></i> Submit Content</h2>
+                <p class="text-muted">Submit notes, achievements, or news updates. All submissions go through our<br>
+                    <strong>AI-powered validation pipeline</strong> before publishing.
+                </p>
+            </div>
+
+            <!-- Pipeline Overview -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4 bg-light">
+                <div class="card-body p-4">
+                    <div class="row text-center g-3">
+                        <div class="col-3">
+                            <i class="fas fa-upload fa-lg text-primary mb-1 d-block"></i>
+                            <small class="fw-bold">Submit</small>
+                        </div>
+                        <div class="col-3">
+                            <i class="fas fa-brain fa-lg text-info mb-1 d-block"></i>
+                            <small class="fw-bold">ML Check</small>
+                        </div>
+                        <div class="col-3">
+                            <i class="fas fa-users fa-lg text-warning mb-1 d-block"></i>
+                            <small class="fw-bold">Community</small>
+                        </div>
+                        <div class="col-3">
+                            <i class="fas fa-check-circle fa-lg text-success mb-1 d-block"></i>
+                            <small class="fw-bold">Published</small>
+                        </div>
+                    </div>
+                    <div class="progress mt-3 rounded-pill" style="height: 4px;">
+                        <div class="progress-bar bg-primary" style="width: 25%"></div>
+                        <div class="progress-bar bg-info" style="width: 25%"></div>
+                        <div class="progress-bar bg-warning" style="width: 25%"></div>
+                        <div class="progress-bar bg-success" style="width: 25%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submission Form -->
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-edit me-2"></i>New Submission</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form action="{{ url_for('submit_content') }}" method="POST" enctype="multipart/form-data">
+                        
+                        <!-- Content Type -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Content Type</label>
+                            <select name="content_type" class="form-select border-custom" required>
+                                <option value="notes">📚 Study Notes</option>
+                                <option value="achievements">🏆 Achievement / Certificate</option>
+                                <option value="news">📰 News / Update</option>
+                            </select>
+                        </div>
+
+                        <!-- Title -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Title</label>
+                            <input type="text" name="title" class="form-control border-custom" 
+                                   placeholder="e.g., Data Structures - Unit 3 Notes" required minlength="5">
+                            <small class="text-muted">Minimum 5 characters. Be descriptive and specific.</small>
+                        </div>
+
+                        <!-- Content / Description -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Description / Content</label>
+                            <textarea name="content" class="form-control border-custom" rows="5" 
+                                      placeholder="Describe the content in detail. More details = higher quality score." required minlength="20"></textarea>
+                            <small class="text-muted">Minimum 20 characters. Detailed descriptions score higher in validation.</small>
+                        </div>
+
+                        <!-- Category (for news) -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Category</label>
+                            <input type="text" name="category" class="form-control border-custom" 
+                                   placeholder="e.g., Seminar, Placement, Research, General">
+                        </div>
+
+                        <!-- Subject (for notes) -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Subject Code (for Notes)</label>
+                            <input type="text" name="subject" class="form-control border-custom" 
+                                   placeholder="e.g., CS201, CS301">
+                        </div>
+
+                        <!-- File Upload -->
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Attach File (Optional)</label>
+                            <input type="file" name="file" class="form-control border-custom">
+                            <small class="text-muted">
+                                Notes: PDF, DOC, DOCX, PPT, PPTX, TXT &middot; 
+                                Achievements: JPG, PNG, PDF &middot; 
+                                News: JPG, PNG, GIF
+                            </small>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold py-2 shadow">
+                                <i class="fas fa-paper-plane me-2"></i>Submit for Validation
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Scoring Guide -->
+            <div class="card border-0 shadow-sm rounded-4 mt-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-info-circle text-info me-2"></i>How Scoring Works</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="p-3 rounded-3 bg-success bg-opacity-10 text-center">
+                                <h5 class="fw-bold text-success mb-1">≥ 80</h5>
+                                <small class="fw-bold text-success">Auto-Approved</small>
+                                <br><small class="text-muted">Published immediately</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 rounded-3 bg-warning bg-opacity-10 text-center">
+                                <h5 class="fw-bold text-warning mb-1">50–79</h5>
+                                <small class="fw-bold text-warning">Community Review</small>
+                                <br><small class="text-muted">Users vote to decide</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 rounded-3 bg-danger bg-opacity-10 text-center">
+                                <h5 class="fw-bold text-danger mb-1">&lt; 50</h5>
+                                <small class="fw-bold text-danger">Rejected</small>
+                                <br><small class="text-muted">Low quality / spam</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

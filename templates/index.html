@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    .hero-section-dynamic {
+        background: url('{{ url_for("static", filename="images/" + site.hero_bg) }}') center/cover no-repeat;
+    }
+</style>
+<section class="hero-section hero-section-dynamic">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+        <h2 class="display-3 mb-3">{{ site.hero_title[lang] }}</h2>
+        <p class="lead mb-4">{{ site.hero_description[lang] }}</p>
+        <div class="d-flex justify-content-center gap-3">
+            <a href="#features" class="btn btn-gold btn-lg rounded-pill px-5 fw-bold">Explore</a>
+            <a href="{{ url_for('register') }}" class="btn btn-outline-light btn-lg rounded-pill px-5">Join Us</a>
+        </div>
+    </div>
+</section>
+
+<div class="container py-5 mt-4" id="features">
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-lg hover-up">
+                <div class="card-body text-center p-5">
+                    <div class="bg-primary-subtle rounded-circle p-4 d-inline-block mb-4 text-primary-custom">
+                        <i class="fas fa-user-graduate fa-3x"></i>
+                    </div>
+                    <h4 class="card-title fw-bold mb-3">{% if lang == 'ta' %}மாணவர்கள்{% else %}Students{% endif %}</h4>
+                    <p class="text-muted small">{% if lang == 'ta' %}ஆதாரங்களை அணுகவும், உங்கள் கல்வி முன்னேற்றத்தைக் கண்காணிக்கவும்.{% else %}Access resources, announcements, and track your academic progress.{% endif %}</p>
+                    <a href="{{ url_for('students') }}" class="btn btn-outline-primary rounded-pill px-4 mt-2">View More</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-lg hover-up">
+                <div class="card-body text-center p-5">
+                    <div class="bg-primary-subtle rounded-circle p-4 d-inline-block mb-4 text-primary-custom">
+                        <i class="fas fa-chalkboard-teacher fa-3x"></i>
+                    </div>
+                    <h4 class="card-title fw-bold mb-3">{% if lang == 'ta' %}ஆசிரியர்கள்{% else %}Faculty{% endif %}</h4>
+                    <p class="text-muted small">{% if lang == 'ta' %}பாடங்களை நிர்வகிக்கவும், குறிப்புகளைப் பதிவேற்றவும், தொடர்பு கொள்ளவும்.{% else %}Manage courses, upload notes, and interact with students efficiently.{% endif %}</p>
+                    <a href="{{ url_for('faculty') }}" class="btn btn-outline-primary rounded-pill px-4 mt-2">Meet Faculty</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-lg hover-up">
+                <div class="card-body text-center p-5">
+                    <div class="bg-primary-subtle rounded-circle p-4 d-inline-block mb-4 text-primary-custom">
+                        <i class="fas fa-trophy fa-3x"></i>
+                    </div>
+                    <h4 class="card-title fw-bold mb-3">{% if lang == 'ta' %}சாதனைகள்{% else %}Achievements{% endif %}</h4>
+                    <p class="text-muted small">{% if lang == 'ta' %}விருதுகள், வெளியீடுகள் மற்றும் ஆராய்ச்சிகளைக் கண்டறியவும்.{% else %}Explore the latest awards, publications, and research breakthroughs.{% endif %}</p>
+                    <a href="{{ url_for('achievements') }}" class="btn btn-outline-primary rounded-pill px-4 mt-2">Highlights</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="bg-light-custom py-5 mt-5">
+    <div class="container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <div class="position-relative">
+                    <img src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=600&q=80" alt="Tech" class="img-fluid rounded-4 shadow-lg">
+                    <div class="position-absolute bottom-0 end-0 p-4 bg-primary-custom text-white rounded-4 m-4 d-none d-md-block shadow">
+                        <h4 class="mb-0 fw-bold">20+ Years</h4>
+                        <p class="mb-0">of Academic Excellence</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <h3 class="fw-bold mb-4 display-6" style="color: var(--primary-color);">Important Dates & Information</h3>
+                <div class="accordion accordion-flush" id="infoAccordion">
+                    <div class="accordion-item shadow-sm mb-3 border rounded-3 overflow-hidden">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                Semester Registration 2026
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#infoAccordion">
+                            <div class="accordion-body" style="background-color: var(--bg-card); color: var(--text-muted);">
+                                Registration for the upcoming semester begins next week. Make sure all dues are cleared to proceed with course selection.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item shadow-sm mb-3 border rounded-3 overflow-hidden">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                Exam Schedules
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#infoAccordion">
+                            <div class="accordion-body" style="background-color: var(--bg-card); color: var(--text-muted);">
+                                Mid-term examinations are scheduled for next month. Detailed timetables will be published on the dashboard soon.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

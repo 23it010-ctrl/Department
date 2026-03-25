@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Flask & Tools
+instance/
+.webassets-cache
+.flaskenv
+.pytest_cache/
+
+# User Data & Uploads
+static/uploads/
+uploads/
+*.json
+*.sqlite3
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# VS Code / IDE
+.vscode/
+.idea/
+.project
+.pydevproject
+.settings/
+*.log

@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h2 class="fw-bold m-0" style="color: var(--primary-color);">Achievements</h2>
+            <p class="text-muted mb-0">Celebrating success and excellence.</p>
+        </div>
+        {% if session.get('user_role') == 'student' %}
+        <button class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
+            <i class="fas fa-plus me-1"></i> Upload Achievement
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            {% if achievements %}
+                <div class="row g-4">
+                {% for a in achievements %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-custom h-100 shadow-sm rounded-4 overflow-hidden" style="background-color: var(--bg-card);">
+                        {% if a.image %}
+                        <img src="{{ url_for('static', filename='uploads/' + a.image) }}" class="card-img-top" alt="Achievement" style="height: 200px; object-fit: cover;">
+                        {% else %}
+                        <div class="bg-light d-flex align-items-center justify-content-center" style="height: 200px; background-color: var(--bg-body) !important;">
+                            <i class="fas fa-trophy fa-4x text-warning opacity-25"></i>
+                        </div>
+                        {% endif %}
+                        <div class="card-body p-4">
+                            <span class="badge bg-gold text-dark mb-2">{{ a.date }}</span>
+                            <h5 class="fw-bold mb-2" style="color: var(--text-main);">{{ a.title }}</h5>
+                            <p class="text-muted small mb-0" style="color: var(--text-muted) !important;">{{ a.description }}</p>
+                            <hr class="border-custom opacity-10">
+                            <small class="text-primary fw-bold"><i class="fas fa-user me-1"></i> {{ a.uploaded_by }}</small>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-medal fa-4x mb-3 opacity-25"></i>
+                    <h4 class="fw-bold">No achievements yet.</h4>
+                    <p>Be the first to showcase your success!</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if session.get('user_role') == 'student' %}
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-custom shadow-lg rounded-4" style="background-color: var(--bg-card);">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" style="color: var(--text-main);">Upload Achievement</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: brightness(0) invert(var(--theme-invert, 0));"></button>
+            </div>
+            <form action="{{ url_for('upload_achievement') }}" method="POST" enctype="multipart/form-data">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Title</label>
+                        <input type="text" class="form-control" name="title" placeholder="e.g., CodeRush 2026 Winner" required style="background-color: var(--bg-body); color: var(--text-main); border-color: var(--border-color);">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Description</label>
+                        <textarea class="form-control" name="description" rows="3" placeholder="Describe your achievement..." required style="background-color: var(--bg-body); color: var(--text-main); border-color: var(--border-color);"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Certificate / Photo</label>
+                        <input type="file" class="form-control" name="certificate" accept="image/*" required style="background-color: var(--bg-body); color: var(--text-main); border-color: var(--border-color);">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

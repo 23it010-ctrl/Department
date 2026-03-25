@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-6">
+            <h2 class="fw-bold text-primary-custom"><i class="fas fa-clipboard-check me-2"></i> Content Review Panel</h2>
+            <p class="text-muted">Manage all submitted content — approve, reject, or review validation scores.</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-primary rounded-pill px-4">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    {% set pending_count = submissions|selectattr('status', 'equalto', 'pending')|list|length %}
+    {% set approved_count = submissions|selectattr('status', 'equalto', 'approved')|list|length %}
+    {% set rejected_count = submissions|selectattr('status', 'equalto', 'rejected')|list|length %}
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 text-center p-3 bg-warning-subtle">
+                <h3 class="fw-bold text-warning mb-0">{{ pending_count }}</h3>
+                <small class="text-muted">Pending Review</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 text-center p-3 bg-success-subtle">
+                <h3 class="fw-bold text-success mb-0">{{ approved_count }}</h3>
+                <small class="text-muted">Approved</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 text-center p-3 bg-danger-subtle">
+                <h3 class="fw-bold text-danger mb-0">{{ rejected_count }}</h3>
+                <small class="text-muted">Rejected</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submissions Table -->
+    {% if submissions %}
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-4">Title</th>
+                            <th>Type</th>
+                            <th>Submitted By</th>
+                            <th class="text-center">Score</th>
+                            <th class="text-center">Votes</th>
+                            <th>Status</th>
+                            <th class="text-center pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in submissions %}
+                        <tr>
+                            <!-- Title & Reason -->
+                            <td class="ps-4" style="max-width: 250px;">
+                                <div class="fw-bold text-truncate">{{ item.title }}</div>
+                                <small class="text-muted d-block text-truncate">{{ item.decision_reason }}</small>
+                                {% if item.validation_flags %}
+                                <div class="mt-1">
+                                    {% for flag in item.validation_flags[:2] %}
+                                    <span class="badge bg-light text-dark border" style="font-size: 0.65em;">{{ flag }}</span>
+                                    {% endfor %}
+                                    {% if item.validation_flags|length > 2 %}
+                                    <span class="badge bg-light text-dark border" style="font-size: 0.65em;">+{{ item.validation_flags|length - 2 }} more</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <!-- Type Badge -->
+                            <td>
+                                <span class="badge 
+                                    {% if item.content_type == 'notes' %}bg-primary-subtle text-primary
+                                    {% elif item.content_type == 'achievements' %}bg-success-subtle text-success
+                                    {% elif item.content_type == 'news' %}bg-info-subtle text-info
+                                    {% else %}bg-secondary-subtle text-secondary{% endif %}
+                                    border rounded-pill px-2 py-1" style="font-size: 0.75em;">
+                                    {{ item.content_type|capitalize }}
+                                </span>
+                            </td>
+
+                            <!-- Submitted By -->
+                            <td>
+                                <span class="fw-medium">{{ item.submitted_by }}</span><br>
+                                <small class="text-muted">{{ item.submitted_by_role|capitalize }}</small>
+                            </td>
+
+                            <!-- Confidence Score -->
+                            <td class="text-center">
+                                <div class="d-inline-flex flex-column align-items-center">
+                                    <span class="fw-bold fs-5 
+                                        {% if item.confidence_score >= 80 %}text-success
+                                        {% elif item.confidence_score >= 50 %}text-warning
+                                        {% else %}text-danger{% endif %}">
+                                        {{ item.confidence_score }}
+                                    </span>
+                                    <small class="text-muted" style="font-size: 0.65em;">
+                                        ML:{{ item.ml_score|round(0)|int }} 
+                                        API:{{ item.api_score|round(0)|int }} 
+                                        TXT:{{ item.content_score|round(0)|int }}
+                                    </small>
+                                </div>
+                            </td>
+
+                            <!-- Votes -->
+                            <td class="text-center">
+                                {% set votes = item.votes %}
+                                <span class="text-success"><i class="fas fa-thumbs-up"></i> {{ votes.approve_votes }}</span>
+                                <span class="mx-1 text-muted">/</span>
+                                <span class="text-danger"><i class="fas fa-thumbs-down"></i> {{ votes.reject_votes }}</span>
+                            </td>
+
+                            <!-- Status -->
+                            <td>
+                                {% if item.status == 'approved' %}
+                                <span class="badge bg-success rounded-pill px-3 py-1"><i class="fas fa-check-circle me-1"></i>Approved</span>
+                                {% elif item.status == 'rejected' %}
+                                <span class="badge bg-danger rounded-pill px-3 py-1"><i class="fas fa-times-circle me-1"></i>Rejected</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark rounded-pill px-3 py-1"><i class="fas fa-clock me-1"></i>Pending</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Actions -->
+                            <td class="text-center pe-4">
+                                {% if item.status == 'pending' %}
+                                <div class="d-flex justify-content-center gap-1">
+                                    <a href="{{ url_for('admin_approve_content', submission_id=item._id) }}"
+                                       class="btn btn-success btn-sm rounded-pill px-3 shadow-sm"
+                                       onclick="return confirm('Approve and publish this content?')">
+                                        <i class="fas fa-check me-1"></i>Approve
+                                    </a>
+                                    <a href="{{ url_for('admin_reject_content', submission_id=item._id) }}"
+                                       class="btn btn-danger btn-sm rounded-pill px-3 shadow-sm"
+                                       onclick="return confirm('Reject this content?')">
+                                        <i class="fas fa-times me-1"></i>Reject
+                                    </a>
+                                </div>
+                                {% else %}
+                                <span class="text-muted small">
+                                    {% if item.decided_by %}
+                                    By: {{ item.decided_by }}
+                                    {% else %}
+                                    Auto
+                                    {% endif %}
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-inbox fa-4x text-muted opacity-25 mb-3"></i>
+        <h4 class="text-muted">No Submissions Yet</h4>
+        <p class="text-muted">Content submitted through the validation pipeline will appear here.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

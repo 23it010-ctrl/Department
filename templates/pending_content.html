@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h2 class="fw-bold text-primary-custom"><i class="fas fa-vote-yea me-2"></i> Community Review</h2>
+            <p class="text-muted">Vote on pending submissions to help maintain content quality. Your vote matters!</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm">
+                <i class="fas fa-hourglass-half me-1"></i> {{ submissions|length }} Pending
+            </span>
+        </div>
+    </div>
+
+    <!-- Vote Weight Info -->
+    <div class="alert alert-info border-0 rounded-4 shadow-sm mb-4">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>How voting works:</strong> 
+        Student votes have weight <strong>1</strong>, Faculty votes have weight <strong>3</strong>, Admin votes have weight <strong>5</strong>.
+        Content is auto-approved when approval reaches 80% of weighted votes (minimum 5 votes).
+    </div>
+
+    {% if submissions %}
+    <div class="row g-4">
+        {% for item in submissions %}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
+                <!-- Card Header with Type Badge -->
+                <div class="card-header bg-white py-3 border-bottom-0 d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge 
+                            {% if item.content_type == 'notes' %}bg-primary
+                            {% elif item.content_type == 'achievements' %}bg-success
+                            {% elif item.content_type == 'news' %}bg-info
+                            {% else %}bg-secondary{% endif %}
+                            rounded-pill px-3 py-1">
+                            <i class="fas 
+                                {% if item.content_type == 'notes' %}fa-book
+                                {% elif item.content_type == 'achievements' %}fa-trophy
+                                {% elif item.content_type == 'news' %}fa-newspaper
+                                {% else %}fa-file{% endif %} me-1"></i>
+                            {{ item.content_type|capitalize }}
+                        </span>
+                    </div>
+                    <small class="text-muted">
+                        <i class="fas fa-chart-bar me-1"></i>
+                        Score: <strong>{{ item.confidence_score }}</strong>/100
+                    </small>
+                </div>
+
+                <!-- Card Body -->
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-2">{{ item.title }}</h5>
+                    <p class="text-muted mb-3" style="max-height: 80px; overflow: hidden;">
+                        {{ item.content[:200] }}{% if item.content|length > 200 %}...{% endif %}
+                    </p>
+
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fas fa-user-circle text-muted me-2"></i>
+                        <small class="text-muted">
+                            Submitted by <strong>{{ item.submitted_by }}</strong>
+                            {% if item.category %} &middot; {{ item.category }}{% endif %}
+                        </small>
+                    </div>
+
+                    <!-- Validation Flags -->
+                    {% if item.validation_flags %}
+                    <div class="mb-3">
+                        {% for flag in item.validation_flags[:3] %}
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle me-1 mb-1" style="font-size: 0.7em;">
+                            <i class="fas fa-flag me-1"></i>{{ flag }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Vote Progress Bar -->
+                    {% set votes = item.votes %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <small class="text-success fw-bold">
+                                <i class="fas fa-thumbs-up me-1"></i>{{ votes.approve_votes }} Approve ({{ votes.approve_percent }}%)
+                            </small>
+                            <small class="text-danger fw-bold">
+                                <i class="fas fa-thumbs-down me-1"></i>{{ votes.reject_votes }} Reject ({{ votes.reject_percent }}%)
+                            </small>
+                        </div>
+                        <div class="progress rounded-pill" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: {{ votes.approve_percent }}%"></div>
+                            <div class="progress-bar bg-danger" style="width: {{ votes.reject_percent }}%"></div>
+                        </div>
+                        <small class="text-muted d-block mt-1">{{ votes.total_votes }} total vote(s) &middot; Weighted: {{ votes.weighted_approve }} approve / {{ votes.weighted_reject }} reject</small>
+                    </div>
+                </div>
+
+                <!-- Card Footer: Vote Buttons -->
+                <div class="card-footer bg-light border-0 p-3">
+                    <div class="d-flex gap-2">
+                        <form action="{{ url_for('vote') }}" method="POST" class="flex-fill">
+                            <input type="hidden" name="submission_id" value="{{ item._id }}">
+                            <input type="hidden" name="vote_type" value="approve">
+                            <button type="submit" class="btn btn-outline-success w-100 rounded-pill fw-bold">
+                                <i class="fas fa-check me-1"></i> Approve
+                            </button>
+                        </form>
+                        <form action="{{ url_for('vote') }}" method="POST" class="flex-fill">
+                            <input type="hidden" name="submission_id" value="{{ item._id }}">
+                            <input type="hidden" name="vote_type" value="reject">
+                            <button type="submit" class="btn btn-outline-danger w-100 rounded-pill fw-bold">
+                                <i class="fas fa-times me-1"></i> Reject
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-check-double fa-4x text-success opacity-50 mb-3"></i>
+        <h4 class="text-muted">All Clear!</h4>
+        <p class="text-muted">No pending submissions to review right now.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

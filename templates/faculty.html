@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h2 class="fw-bold" style="color: var(--primary-color);"><i class="fas fa-chalkboard-teacher me-2"></i>Department Faculty</h2>
+        <p class="text-muted">Learn more about our dedicated educators and researchers.</p>
+    </div>
+
+    <!-- Faculty Table Block -->
+    <div class="card shadow-lg border-0 rounded-4 overflow-hidden" style="background: var(--bg-card);">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0" id="facultyTable">
+                <thead style="background: var(--primary-color); color: white;">
+                    <tr>
+                        <th class="ps-4 py-3 fw-bold text-uppercase small">S.No</th>
+                        <th class="py-3 fw-bold text-uppercase small">Faculty Name</th>
+                        <th class="py-3 fw-bold text-uppercase small">Age</th>
+                        <th class="py-3 fw-bold text-uppercase small">Designation / Role</th>
+                        <th class="py-3 fw-bold text-uppercase small">Contact Email</th>
+                        <th class="py-3 text-center fw-bold text-uppercase small">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0">
+                    {% for f in faculties %}
+                    <tr class="faculty-row transition-all" style="cursor: pointer;">
+                        <td class="ps-4 text-muted fw-bold">#{{ loop.index }}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle me-3 d-flex align-items-center justify-content-center fw-bold text-white shadow-sm" style="width: 40px; height: 40px; background: linear-gradient(45deg, #4f46e5, #818cf8);">
+                                    {{ f.name[0] | upper }}
+                                </div>
+                                <span class="fw-bold" style="color: var(--text-main);">{{ f.name }}</span>
+                            </div>
+                        </td>
+                        <td class="text-muted">{{ f.get('age', 'N/A') }}</td>
+                        <td>
+                            <span class="badge rounded-pill bg-info bg-opacity-10 text-info px-3 border border-info border-opacity-25">
+                                {{ f.get('faculty_role', 'Professor') }}
+                            </span>
+                        </td>
+                        <td class="text-muted small">{{ f.email }}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-primary rounded-pill px-4 py-2 view-faculty-btn fw-bold shadow-sm"
+                                data-bs-toggle="modal" 
+                                data-bs-target="#facultyModal"
+                                data-f-name="{{ f.name }}"
+                                data-f-age="{{ f.age }}"
+                                data-f-role="{{ f.get('faculty_role', 'Professor') }}"
+                                data-f-email="{{ f.email }}"
+                                data-f-dept="{{ f.get('department', 'Computer Science') }}"
+                                data-f-id="{{ f.get('faculty_id', 'N/A') }}"
+                                data-f-photo="https://ui-avatars.com/api/?name={{ f.name }}&background=4f46e5&color=fff&size=200"
+                            >
+                                <i class="fas fa-id-badge me-2"></i> View
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-5">
+                            <i class="fas fa-users-slash fa-3x mb-3 opacity-25"></i>
+                            <h5 class="fw-bold">No faculty members found.</h5>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Faculty Detail Modal -->
+<div class="modal fade" id="facultyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-2xl rounded-5 overflow-hidden" style="background: var(--bg-card); color: var(--text-main);">
+            <div class="row g-0">
+                <div class="col-lg-5 p-5 text-center d-flex flex-column justify-content-center border-end border-custom" style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.05) 0%, rgba(129, 140, 248, 0.05) 100%);">
+                    <div class="mb-4">
+                        <img id="modalFacultyPhoto" src="" alt="Faculty" class="rounded-circle shadow-lg border border-5 border-white" style="width: 180px; height: 180px; object-fit: cover; background: #fff;">
+                    </div>
+                    <h3 class="fw-bold mb-1 text-primary" id="modalFacultyName">Faculty Name</h3>
+                    <p class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2 mb-0 fw-bold" id="modalFacultyRole">Professor</p>
+                </div>
+                
+                <div class="col-lg-7 p-5 position-relative">
+                    <button type="button" class="btn-close position-absolute top-0 end-0 m-4 shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+                    
+                    <h5 class="fw-bold mb-4 d-flex align-items-center">
+                        <i class="fas fa-user-tie text-info me-3 fs-3"></i> Faculty Professional Info
+                    </h5>
+                    
+                    <div class="spaced-list mb-5">
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <div class="p-3 rounded-4 border-custom" style="background: var(--bg-body);">
+                                    <small class="d-block text-muted text-uppercase fw-bold mb-1" style="font-size: 0.65rem;">Faculty ID</small>
+                                    <span class="fw-bold" id="modalFacultyID">N/A</span>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="p-3 rounded-4 border-custom" style="background: var(--bg-body);">
+                                    <small class="d-block text-muted text-uppercase fw-bold mb-1" style="font-size: 0.65rem;">Age</small>
+                                    <span class="fw-bold" id="modalFacultyAge">N/A</span>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="p-3 rounded-4 border-custom" style="background: var(--bg-body);">
+                                    <small class="d-block text-muted text-uppercase fw-bold mb-1" style="font-size: 0.65rem;">Department</small>
+                                    <span class="fw-bold" id="modalFacultyDept">Computer Science</span>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="p-3 rounded-4 border-custom" style="background: var(--bg-body);">
+                                    <small class="d-block text-muted text-uppercase fw-bold mb-1" style="font-size: 0.65rem;">Email Address</small>
+                                    <span class="fw-bold text-break" id="modalFacultyEmail">email@college.edu</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-end">
+                        <button class="btn btn-outline-secondary rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Zebra Styling */
+    #facultyTable tbody tr:nth-of-type(odd) { background-color: rgba(79, 70, 229, 0.02); }
+    #facultyTable tbody tr:nth-of-type(even) { background-color: rgba(255, 193, 7, 0.02); }
+    #facultyTable tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.04) !important;
+        transform: scale(1.002);
+    }
+    .transition-all { transition: all 0.2s ease-in-out; }
+    .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+    [data-theme="dark"] #facultyTable tbody tr:nth-of-type(odd) { background-color: rgba(255, 255, 255, 0.02); }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const viewBtns = document.querySelectorAll('.view-faculty-btn');
+        viewBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('modalFacultyName').textContent = this.getAttribute('data-f-name') || 'N/A';
+                document.getElementById('modalFacultyRole').textContent = this.getAttribute('data-f-role') || 'Professor';
+                document.getElementById('modalFacultyAge').textContent = this.getAttribute('data-f-age') || 'N/A';
+                document.getElementById('modalFacultyID').textContent = this.getAttribute('data-f-id') || 'N/A';
+                document.getElementById('modalFacultyDept').textContent = this.getAttribute('data-f-dept') || 'N/A';
+                document.getElementById('modalFacultyEmail').textContent = this.getAttribute('data-f-email') || 'N/A';
+                document.getElementById('modalFacultyPhoto').src = this.getAttribute('data-f-photo');
+            });
+        });
+
+        const rows = document.querySelectorAll('.faculty-row');
+        rows.forEach(row => {
+            row.addEventListener('click', function(e) {
+                if (!e.target.closest('button')) { this.querySelector('.view-faculty-btn').click(); }
+            });
+        });
+    });
+</script>
+{% endblock %}

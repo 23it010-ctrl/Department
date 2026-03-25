@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h2 class="fw-bold" style="color: var(--primary-color);">Contact Us</h2>
+        <p class="text-muted">Stay in touch with the department administration.</p>
+    </div>
+    <div class="row justify-content-center g-4">
+        <div class="col-md-5">
+            <div class="card shadow border-0 rounded-4 h-100 bg-primary text-white p-5">
+                <h4 class="fw-bold mb-4">Official Contact</h4>
+                <div class="mb-4">
+                    <h6 class="fw-bold text-uppercase opacity-75 small mb-2"><i class="fas fa-map-marker-alt me-2"></i> Campus Address</h6>
+                    <p class="ms-4 mb-0 fw-bold">{{ site.contact_address or 'Department of CSE, IITN Campus, Tech Road.' }}</p>
+                </div>
+                <div class="mb-4">
+                    <h6 class="fw-bold text-uppercase opacity-75 small mb-2"><i class="fas fa-phone me-2"></i> Phone Line</h6>
+                    <p class="ms-4 mb-0 fw-bold">{{ site.contact_phone or '+91 123 456 7890' }}</p>
+                </div>
+                <div class="mb-4">
+                    <h6 class="fw-bold text-uppercase opacity-75 small mb-2"><i class="fas fa-envelope me-2"></i> Official Email</h6>
+                    <p class="ms-4 mb-0 fw-bold text-break">{{ site.contact_email or 'info@cse.iitn.ac.in' }}</p>
+                </div>
+                
+                <div class="mt-auto">
+                    <div class="ratio ratio-16x9 rounded-4 overflow-hidden border border-white border-opacity-25 shadow-sm">
+                        <iframe src="{{ site.contact_location or 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3886.8502574044815!2d80.2312!3d12.9915!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTLCsDU5JzI5LjQiTiA4MMKwMTMnNTIuMyJF' }}" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-7">
+            <div class="card shadow-sm border-0 rounded-4 h-100 p-5">
+                <h4 class="fw-bold mb-4" style="color: var(--primary-color);">Send us a Message</h4>
+                <form>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" placeholder="Your Name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="email" class="form-control" placeholder="Your Email" required>
+                        </div>
+                        <div class="col-12">
+                            <input type="text" class="form-control" placeholder="Subject" required>
+                        </div>
+                        <div class="col-12">
+                            <textarea class="form-control" rows="5" placeholder="Message" required></textarea>
+                        </div>
+                        <div class="col-12">
+                            <button type="button" class="btn btn-primary rounded-pill px-5 fw-bold" onclick="alert('Message sent successfully!')">Submit</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
