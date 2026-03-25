@@ -45,12 +45,39 @@ app.secret_key = 'department_secret_key_2026'
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 
 # ── MySQL Configuration (Local or Production/Vercel) ──────────────────────────
-# Format: mysql+mysqlconnector://user:password@host/dbname
-mysql_uri = os.environ.get('MYSQL_URI', 'sqlite:///department.db') # Fallback to SQLite for easy local dev
+# Priority: 1. MYSQL_URI (Atlas/AWS) -> 2. Local Writable SQLite -> 3. Vercel Writable /tmp
+mysql_uri = os.environ.get('MYSQL_URI')
+if not mysql_uri:
+    if os.environ.get('VERCEL'):
+        # Vercel only allows writing to /tmp
+        mysql_uri = 'sqlite:////tmp/department.db'
+    else:
+        mysql_uri = 'sqlite:///department.db'
+
 app.config['SQLALCHEMY_DATABASE_URI'] = mysql_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+
+# ── Auto-Initialize Database (Crucial for Vercel/Cloud) ──────────────────────
+# This ensures tables are created automatically before the first request.
+def init_db():
+    with app.app_context():
+        try:
+            db.create_all()
+            print(f"[OK] Database initialized at {mysql_uri}")
+            
+            # Check for initial settings
+            if Setting.query.filter_by(site_id='main_config').first() is None:
+                new_setting = Setting(site_id='main_config', data_json=json.dumps(DEFAULT_SETTINGS))
+                db.session.add(new_setting)
+                db.session.commit()
+                print("[OK] Settings Initialized.")
+        except Exception as e:
+            print(f"[WARNING] Database initialization issue: {e}")
+
+# Run initialization once at startup
+init_db()
 
 # ── SQL Database Models ───────────────────────────────────────────────────────
 
