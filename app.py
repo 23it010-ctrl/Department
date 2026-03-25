@@ -162,41 +162,95 @@ def role_required(role):
 # ── Context Processors ───────────────────────────────────────────────────────
 @app.context_processor
 def inject_globals():
-    # Site Settings
-    settings_col = get_col('settings')
-    site_settings = DEFAULT_SETTINGS
-    if settings_col is not None:
-        saved_settings = settings_col.find_one({"site_id": "main_config"})
-        if saved_settings:
-            site_settings = saved_settings
-    
-    # Language & Theme
-    lang = session.get('lang', 'en')
-    theme = session.get('theme', site_settings.get('theme', 'light'))
-    
-    # Marquee
-    marquee_text = "Welcome! | Semester Registration Open | News Updates"
-    news_col = get_col('news')
-    if news_col is not None:
-        recent = list(news_col.find().sort("date", -1).limit(5))
-        if recent:
-            marquee_text = " | ".join([n['title'] for n in recent])
+    try:
+        # Site Settings
+        settings_col = get_col('settings')
+        site_settings = DEFAULT_SETTINGS.copy()
+        
+        if settings_col is not None:
+            saved = settings_col.find_one({"site_id": "main_config"})
+            if saved:
+                # Merge saved settings into defaults
+                for k, v in saved.items():
+                    site_settings[k] = v
+        
+        # ── UNIVERSAL BILINGUAL HEALER ──────────────────────────────────────────
+        # Ensure all required bilingual fields are properly formatted as dicts.
+        # This prevents 500 errors if OLD non-bilingual data exists in the DB.
+        bilingual_fields = [
+            'header_title', 'header_subtitle', 'college_name', 
+            'hero_title', 'hero_description'
+        ]
+        
+        for field in bilingual_fields:
+            val = site_settings.get(field)
+            if val and isinstance(val, str):
+                # Auto-upgrade: Convert string to dict with same value for both
+                site_settings[field] = {"en": val, "ta": val}
+            elif not val or not isinstance(val, dict):
+                # Fallback to default if missing or invalid
+                site_settings[field] = DEFAULT_SETTINGS.get(field, {"en": "Portal", "ta": "Portal"})
 
-    # Current User
-    current_user = None
-    if 'user_id' in session:
-        user_id = session.get('user_id')
-        if user_id:
-            users_col = get_col('users')
-            if users_col is not None:
-                try:
-                    current_user = users_col.find_one({'_id': ObjectId(user_id)})
-                    if not current_user:
+        # HEAL navigation items: Ensure all have bilingual labels
+        if 'nav_items' in site_settings:
+            fixed_nav = []
+            for item in site_settings['nav_items']:
+                label = item.get('label', 'Menu')
+                if isinstance(label, str):
+                    item['label'] = {'en': label, 'ta': label}
+                elif not isinstance(label, dict):
+                    item['label'] = {'en': str(label), 'ta': str(label)}
+                fixed_nav.append(item)
+            site_settings['nav_items'] = fixed_nav
+
+        # Language & Theme
+        lang = session.get('lang', 'en')
+        theme = session.get('theme', site_settings.get('theme', 'light'))
+        
+        # Marquee
+        marquee_text = "Welcome! | Semester Registration Open | News Updates"
+        news_col = get_col('news')
+        if news_col is not None:
+            try:
+                recent = list(news_col.find().sort("date", -1).limit(5))
+                if recent:
+                    marquee_text = " | ".join([str(n.get('title', 'Update')) for n in recent])
+            except:
+                pass
+
+        # Current User
+        current_user = None
+        if 'user_id' in session:
+            user_id = session.get('user_id')
+            if user_id:
+                users_col = get_col('users')
+                if users_col is not None:
+                    try:
+                        current_user = users_col.find_one({'_id': ObjectId(user_id)})
+                        if not current_user:
+                            current_user = users_col.find_one({'_id': user_id})
+                    except:
                         current_user = users_col.find_one({'_id': user_id})
-                except:
-                    current_user = users_col.find_one({'_id': user_id})
-
-    return {'marquee_text': marquee_text, 'now': datetime.utcnow(), 'site': site_settings, 'lang': lang, 'theme': theme, 'user': current_user}
+        
+        return {
+            'marquee_text': marquee_text, 
+            'now': datetime.utcnow(), 
+            'site': site_settings, 
+            'lang': lang, 
+            'theme': theme, 
+            'user': current_user
+        }
+    except Exception as e:
+        # Fallback to absolute minimum to prevent 500 on every page
+        print(f"CRITICAL ERROR in inject_globals: {str(e)}")
+        return {
+            'marquee_text': "Welcome", 
+            'now': datetime.utcnow(), 
+            'site': DEFAULT_SETTINGS, 
+            'lang': 'en', 
+            'theme': 'light', 
+            'user': None
+        }
 
 @app.route('/set_lang/<lang>')
 def set_lang(lang):
