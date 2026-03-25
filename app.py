@@ -1,16 +1,15 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify # type: ignore
-from pymongo import MongoClient # type: ignore
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask_sqlalchemy import SQLAlchemy
 import os
-from werkzeug.security import generate_password_hash, check_password_hash # type: ignore
+import json
+from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from datetime import datetime
-from bson.objectid import ObjectId # type: ignore
 
 # ── New Service Imports (Modular Architecture) ───────────────────────────────
 from services.validation_engine import validate_submission
 from services.voting_engine import cast_vote, get_vote_tally, evaluate_votes
 from services.rate_limiter import check_rate_limit, record_submission
-
 
 # Default Site Settings
 DEFAULT_SETTINGS = {
@@ -18,7 +17,7 @@ DEFAULT_SETTINGS = {
     "theme": "light",
     "header_title": {"en": "DEPARTMENT OF COMPUTER SCIENCE & ENGINEERING", "ta": "கணினி அறிவியல் மற்றும் பொறியியல் துறை"},
     "header_subtitle": {"en": "Excellence in Technology", "ta": "தொழில்நுட்பத்தில் சிறந்து விளங்குதல்"},
-    "college_name": {"en": "INDIAN INSTITUTE OF TECHNOLOGY NATIONAL (IITN)", "ta": "இந்திய தொழில்நுட்ப நிறுவனம் தேசிய (IITN)"},
+    "college_name": {"en": "INDIAN INSTITUTE OF IIT NATIONAL (IITN)", "ta": "இந்திய தொழில்நுட்ப நிறுவனம் தேசிய (IITN)"},
     "left_logo": "dept_logo_left.png",
     "right_logo": "dept_logo_right.png",
     "hero_bg": "campus_hero_bg.png",
@@ -45,110 +44,159 @@ app = Flask(__name__)
 app.secret_key = 'department_secret_key_2026'
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 
-# ── Ensure Required Directories Exist (Crucial for Cloud Deployment) ──────────
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(os.path.join('static', 'images'), exist_ok=True)
+# ── MySQL Configuration (Local or Production/Vercel) ──────────────────────────
+# Format: mysql+mysqlconnector://user:password@host/dbname
+mysql_uri = os.environ.get('MYSQL_URI', 'sqlite:///department.db') # Fallback to SQLite for easy local dev
+app.config['SQLALCHEMY_DATABASE_URI'] = mysql_uri
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# ── Built-in Admin (works even without MongoDB) ──────────────────────────────
-BUILTIN_ADMIN = {
-    '_id': 'builtin_admin',
-    'name': 'Admin',
-    'email': 'admin@dept.com',
-    'password': generate_password_hash('Admin@1234'),
-    'role': 'admin',
-    'approved': True
-}
+db = SQLAlchemy(app)
 
-# MongoDB Connection
-# Priority: 1. Environment Variable (Vercel/Atlas) -> 2. Localhost -> 3. JSON Fallback
-mongodb_uri = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/')
+# ── SQL Database Models ───────────────────────────────────────────────────────
 
-client = None
-db = None
-try:
-    client = MongoClient(mongodb_uri, serverSelectionTimeoutMS=3000)
-    # Check if connection is alive
-    client.server_info()
-    db = client['department_db']
-    print(f"[OK] Connected to MongoDB via {mongodb_uri}")
-except Exception as e:
-    print(f"[WARNING] MongoDB connection failed: {e}. Falling back to JSON/Mock mode.")
-    client = None
-    db = None
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(20), default='student')  # admin, faculty, student
+    roll_no = db.Column(db.String(50))
+    department = db.Column(db.String(100), default='Computer Science')
+    photo = db.Column(db.String(100), default='default_avatar.png')
+    approved = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(20), default='pending')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-import json
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
-class JSONCursor:
-    def __init__(self, data): self.data = data
-    def sort(self, key, direction):
-        if self.data and isinstance(self.data[0], dict) and key in self.data[0]:
-            self.data.sort(key=lambda x: str(x.get(key, '')), reverse=(direction == -1))
-        return self
-    def limit(self, n):
-        self.data = self.data[:n]
-        return self
-    def __iter__(self): return iter(self.data)
-    def __len__(self): return len(self.data)
+class News(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(50), default='General')
+    image = db.Column(db.String(100))
+    date = db.Column(db.String(50)) # e.g. "Mar 25, 2026"
+    source = db.Column(db.String(50), default='admin')
+    
+    def to_dict(self):
+        d = {c.name: getattr(self, c.name) for c in self.__table__.columns}
+        d['_id'] = self.id # Compat for news_id usages
+        return d
 
-class JSONCollection:
-    def __init__(self, name):
-        self.filename = os.path.join(app.config['UPLOAD_FOLDER'], f"{name}.json")
-        os.makedirs(os.path.dirname(self.filename), exist_ok=True)
-    def _read(self):
-        if not os.path.exists(self.filename): return []
-        try:
-            with open(self.filename, 'r') as f: return json.load(f)
-        except: return []
-    def _write(self, data):
-        with open(self.filename, 'w') as f: json.dump(data, f, indent=4)
-    def _match(self, q, doc):
-        for k, v in q.items():
-            if isinstance(v, dict) and '$ne' in v:
-                ne_val = v.get('$ne')
-                if str(doc.get(k)) == str(ne_val): return False
-            elif str(doc.get(k)) != str(v): return False
-        return True
-    def find(self, query=None):
-        data = self._read()
-        if not query: return JSONCursor(data)
-        return JSONCursor([d for d in data if self._match(query, d)])
+class Note(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    subject = db.Column(db.String(100), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    uploaded_by = db.Column(db.String(100))
+    date = db.Column(db.DateTime, default=datetime.utcnow)
+    source = db.Column(db.String(50), default='direct')
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+class Achievement(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    image = db.Column(db.String(100))
+    date = db.Column(db.String(50))
+    uploaded_by = db.Column(db.String(100))
+    source = db.Column(db.String(50), default='direct')
+    
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+class Submission(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.Text)
+    content_type = db.Column(db.String(50))
+    category = db.Column(db.String(100))
+    subject = db.Column(db.String(100))
+    filename = db.Column(db.String(255))
+    submitted_by = db.Column(db.String(100))
+    submitted_by_id = db.Column(db.Integer)
+    status = db.Column(db.String(20), default='pending')
+    confidence_score = db.Column(db.Float)
+    decision_reason = db.Column(db.Text)
+    ml_score = db.Column(db.Float)
+    api_score = db.Column(db.Float)
+    content_score = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        d = {c.name: getattr(self, c.name) for c in self.__table__.columns}
+        d['_id'] = self.id
+        return d
+
+class Vote(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer)
+    user_id = db.Column(db.Integer)
+    user_role = db.Column(db.String(20))
+    vote_type = db.Column(db.String(20)) # approve/reject
+    weight = db.Column(db.Integer)
+    
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+class Setting(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    site_id = db.Column(db.String(50), unique=True, default='main_config')
+    data_json = db.Column(db.Text) # Storing full settings as JSON for flexibility
+
+    def get_data(self):
+        return json.loads(self.data_json or '{}')
+
+# ── Compatibility Helper ────────────────────────────────────────────────────
+# We create a 'Collection-like' object to minimize logic refactor.
+class SQLCollection:
+    def __init__(self, model):
+        self.model = model
     def find_one(self, query):
-        res = self.find(query)
-        return res.data[0] if res.data else None
+        if '_id' in query:
+            return self.model.query.get(query['_id']).to_dict() if self.model.query.get(query['_id']) else None
+        # Basic filtering for common queries (email, status)
+        res = self.model.query.filter_by(**query).first()
+        return res.to_dict() if res else None
+    def find(self, query=None):
+        if query:
+            return [obj.to_dict() for obj in self.model.query.filter_by(**query).all()]
+        return [obj.to_dict() for obj in self.model.query.all()]
     def insert_one(self, doc):
-        doc['_id'] = os.urandom(12).hex()
-        for k, v in doc.items():
-            if isinstance(v, datetime): doc[k] = v.isoformat()
-        data = self._read()
-        data.append(doc)
-        self._write(data)
+        doc.pop('_id', None) # SQLAlchemy handles ID
+        obj = self.model(**doc)
+        db.session.add(obj)
+        db.session.commit()
+        doc['_id'] = obj.id # Return ID for compatibility
     def update_one(self, query, update, upsert=False):
-        data = self._read()
-        found = False
-        for i, doc in enumerate(data): # type: ignore
-            if self._match(query, doc):
-                for k, v in update.get('$set', {}).items(): # type: ignore
-                    data[i][k] = v
-                found = True
-                break
-        if not found and upsert:
-            new_doc = query.copy()
-            new_doc.update(update.get('$set', {}))
-            new_doc['_id'] = os.urandom(12).hex()
-            data.append(new_doc) # type: ignore
-        self._write(data)
-    def delete_one(self, query):
-        data = self._read()
-        new_data = [d for d in data if not self._match(query, d)]
-        self._write(new_data)
+        # Simplify update for existing logic
+        target = self.model.query.filter_by(**query).first()
+        if target:
+            for k, v in update.get('$set', {}).items():
+                if hasattr(target, k): setattr(target, k, v)
+            db.session.commit()
     def count_documents(self, query):
-        return len(self.find(query).data)
+        return self.model.query.filter_by(**query).count()
+    def delete_one(self, query):
+        target = self.model.query.filter_by(**query).first()
+        if target:
+            db.session.delete(target)
+            db.session.commit()
 
 def get_col(name):
-    if db is not None:
-        return db[name]
-    return JSONCollection(name)
+    mapping = {
+        'users': User, 'news': News, 'notes': Note,
+        'achievements': Achievement, 'submitted_content': Submission,
+        'votes': Vote, 'settings': Setting
+    }
+    return SQLCollection(mapping[name]) if name in mapping else None
 
+# ── Ensure Required Directories Exist ──────────
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(os.path.join('static', 'images'), exist_ok=True)
 # ── Decorators ──────────────────────────────────────────────────────────────
 def login_required(f):
     @wraps(f)
@@ -179,15 +227,15 @@ def inject_globals():
         site_settings = DEFAULT_SETTINGS.copy()
         
         if settings_col is not None:
-            saved = settings_col.find_one({"site_id": "main_config"})
-            if saved:
+            # For SQL Setting model, we store a JSON string in 'data_json'
+            setting_obj = Setting.query.filter_by(site_id='main_config').first()
+            if setting_obj:
+                saved = setting_obj.get_data()
                 # Merge saved settings into defaults
                 for k, v in saved.items():
                     site_settings[k] = v
         
         # ── UNIVERSAL BILINGUAL HEALER ──────────────────────────────────────────
-        # Ensure all required bilingual fields are properly formatted as dicts.
-        # This prevents 500 errors if OLD non-bilingual data exists in the DB.
         bilingual_fields = [
             'header_title', 'header_subtitle', 'college_name', 
             'hero_title', 'hero_description'
@@ -196,13 +244,11 @@ def inject_globals():
         for field in bilingual_fields:
             val = site_settings.get(field)
             if val and isinstance(val, str):
-                # Auto-upgrade: Convert string to dict with same value for both
                 site_settings[field] = {"en": val, "ta": val}
             elif not val or not isinstance(val, dict):
-                # Fallback to default if missing or invalid
                 site_settings[field] = DEFAULT_SETTINGS.get(field, {"en": "Portal", "ta": "Portal"})
 
-        # HEAL navigation items: Ensure all have bilingual labels
+        # HEAL navigation items
         if 'nav_items' in site_settings:
             fixed_nav = []
             for item in site_settings['nav_items']:
@@ -223,25 +269,21 @@ def inject_globals():
         news_col = get_col('news')
         if news_col is not None:
             try:
-                recent = list(news_col.find().sort("date", -1).limit(5))
+                # SQL sort
+                recent = News.query.order_by(News.id.desc()).limit(5).all()
                 if recent:
-                    marquee_text = " | ".join([str(n.get('title', 'Update')) for n in recent])
-            except:
-                pass
+                    marquee_text = " | ".join([str(n.title) for n in recent])
+            except Exception as e:
+                print(f"News error: {e}")
 
         # Current User
         current_user = None
         if 'user_id' in session:
             user_id = session.get('user_id')
             if user_id:
-                users_col = get_col('users')
-                if users_col is not None:
-                    try:
-                        current_user = users_col.find_one({'_id': ObjectId(user_id)})
-                        if not current_user:
-                            current_user = users_col.find_one({'_id': user_id})
-                    except:
-                        current_user = users_col.find_one({'_id': user_id})
+                current_user = User.query.get(user_id)
+                if current_user:
+                    current_user = current_user.to_dict()
         
         return {
             'marquee_text': marquee_text, 
@@ -252,7 +294,6 @@ def inject_globals():
             'user': current_user
         }
     except Exception as e:
-        # Fallback to absolute minimum to prevent 500 on every page
         print(f"CRITICAL ERROR in inject_globals: {str(e)}")
         return {
             'marquee_text': "Welcome", 
