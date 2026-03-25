@@ -45,6 +45,10 @@ app = Flask(__name__)
 app.secret_key = 'department_secret_key_2026'
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 
+# ── Ensure Required Directories Exist (Crucial for Cloud Deployment) ──────────
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(os.path.join('static', 'images'), exist_ok=True)
+
 # ── Built-in Admin (works even without MongoDB) ──────────────────────────────
 BUILTIN_ADMIN = {
     '_id': 'builtin_admin',
