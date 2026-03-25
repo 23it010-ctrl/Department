@@ -28,6 +28,15 @@ instance/
 .flaskenv
 .pytest_cache/
 
+# Local Database (SQLite)
+department.db
+
+# Temporary logs
+*.log
+duplicates.txt
+server_test.log
+server_debug.log
+
 # User Data & Uploads
 static/uploads/
 uploads/
